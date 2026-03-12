@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTV Progress Tracker — GESS</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #1a6e3c;
+    --green-light: #2a9956;
+    --green-bright: #34c46e;
+    --green-dim: #0f4023;
+    --green-bg: #0a2415;
+    --black: #080e0a;
+    --card: #111a13;
+    --card2: #162019;
+    --border: #1f3424;
+    --border-bright: #2a4a2f;
+    --text: #e8f0ea;
+    --text-dim: #7a9c82;
+    --text-muted: #3d5c44;
+    --white: #f0f7f2;
+
+    --blue: #2980b9;
+    --teal: #1e8449;
+    --amber: #d4ac0d;
+    --red: #c0392b;
+
+    --l1: #1a4a6e;
+    --l2: #1a5c30;
+    --l3: #6b5200;
+    --l4: #7b1a12;
+    --l1-bg: #0d2235;
+    --l2-bg: #0a2c18;
+    --l3-bg: #2a2000;
+    --l4-bg: #2e0a07;
+    --l1-accent: #4aa3e0;
+    --l2-accent: #34c46e;
+    --l3-accent: #f0c419;
+    --l4-accent: #e85d4a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── SCANLINE OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none; z-index: 9999;
+  }
+
+  /* ─── TOP BAR ─── */
+  .topbar {
+    background: var(--green-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem; letter-spacing: 3px;
+    color: var(--green-bright);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .topbar-logo span { color: var(--text-dim); font-size: 0.85rem; letter-spacing: 1px; font-family: 'DM Mono', monospace; }
+  .topbar-right { display: flex; align-items: center; gap: 1rem; }
+  .teacher-btn {
+    background: transparent; border: 1px solid var(--border-bright);
+    color: var(--text-dim); padding: 6px 14px; border-radius: 4px;
+    font-family: 'DM Mono', monospace; font-size: 0.75rem; cursor: pointer;
+    transition: all 0.2s; letter-spacing: 1px;
+  }
+  .teacher-btn:hover { border-color: var(--green-bright); color: var(--green-bright); }
+
+  /* ─── MAIN WRAPPER ─── */
+  #app { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+  /* ─── LANDING ─── */
+  #landing { text-align: center; padding: 4rem 2rem; }
+  .landing-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 8vw, 5.5rem);
+    line-height: 0.95; color: var(--white);
+    letter-spacing: 2px; margin-bottom: 0.5rem;
+  }
+  .landing-title em { color: var(--green-bright); font-style: normal; }
+  .landing-sub { color: var(--text-dim); font-size: 1rem; margin-bottom: 3rem; letter-spacing: 1px; }
+  .select-wrapper { position: relative; max-width: 420px; margin: 0 auto 1.5rem; }
+  .select-wrapper select {
+    width: 100%; padding: 14px 48px 14px 18px;
+    background: var(--card); border: 1px solid var(--border-bright);
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 1rem;
+    border-radius: 6px; appearance: none; cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .select-wrapper select:focus { outline: none; border-color: var(--green-bright); }
+  .select-wrapper::after {
+    content: '▾'; position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+    color: var(--green-bright); pointer-events: none; font-size: 1.1rem;
+  }
+  .btn-primary {
+    background: var(--green); color: white; border: none;
+    padding: 14px 40px; border-radius: 6px; font-size: 1rem; font-weight: 600;
+    cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
+  }
+  .btn-primary:hover { background: var(--green-light); transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ─── STUDENT DASHBOARD ─── */
+  #student-view { display: none; }
+  .dash-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
+  }
+  .dash-header h2 {
+    font-family: 'Bebas Neue', sans-serif; font-size: 2rem;
+    letter-spacing: 2px; color: var(--white);
+  }
+  .dash-header h2 em { color: var(--green-bright); font-style: normal; }
+  .week-badge {
+    background: var(--card); border: 1px solid var(--border-bright);
+    padding: 6px 14px; border-radius: 20px; font-family: 'DM Mono', monospace;
+    font-size: 0.8rem; color: var(--text-dim);
+  }
+  .back-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-dim); padding: 6px 14px; border-radius: 4px;
+    font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+  }
+  .back-btn:hover { border-color: var(--text-dim); color: var(--text); }
+
+  /* ─── SECTION HEADER ─── */
+  .section-label {
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; letter-spacing: 3px;
+    color: var(--text-muted); margin: 2rem 0 1rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ─── ROLE REFLECTION ─── */
+  .role-section-intro { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 1rem; }
+  .role-list { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem; }
+
+  .role-row {
+    background: var(--card); border: 2px solid var(--border);
+    border-radius: 10px; overflow: hidden; transition: border-color 0.2s;
+  }
+  .role-row.active { border-color: var(--border-bright); }
+
+  .role-row-top {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.7rem 1rem; cursor: pointer;
+  }
+  .role-row-top:hover { background: rgba(255,255,255,0.02); }
+
+  .role-checkbox {
+    width: 20px; height: 20px; border-radius: 5px;
+    border: 2px solid var(--border-bright); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.15s; font-size: 0.75rem;
+  }
+  .role-row.active .role-checkbox { background: var(--green); border-color: var(--green-bright); color: white; }
+
+  .role-row-icon { font-size: 1.4rem; flex-shrink: 0; }
+  .role-row-info { flex: 1; }
+  .role-row-name { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+  .role-row-side { font-size: 0.7rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Traffic light rating */
+  .tl-group { display: flex; gap: 6px; flex-shrink: 0; }
+  .tl-btn {
+    padding: 4px 10px; border-radius: 20px; border: 2px solid transparent;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;
+    cursor: pointer; transition: all 0.15s; opacity: 0.35;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .tl-btn.good  { background: rgba(231,76,60,0.15);  color: #e74c3c; border-color: rgba(231,76,60,0.3); }
+  .tl-btn.great { background: rgba(241,196,15,0.15); color: #f1c40f; border-color: rgba(241,196,15,0.3); }
+  .tl-btn.amazing { background: rgba(46,204,113,0.15); color: #2ecc71; border-color: rgba(46,204,113,0.3); }
+  .tl-btn.selected { opacity: 1; transform: scale(1.08); }
+  .tl-btn.good.selected    { background: rgba(231,76,60,0.25);  border-color: #e74c3c; }
+  .tl-btn.great.selected   { background: rgba(241,196,15,0.25); border-color: #f1c40f; }
+  .tl-btn.amazing.selected { background: rgba(46,204,113,0.25); border-color: #2ecc71; }
+
+  /* Feedback textarea — expands when role is ticked */
+  .role-feedback-wrap { display: none; padding: 0 1rem 0.8rem; }
+  .role-row.active .role-feedback-wrap { display: block; }
+  .role-feedback-wrap textarea {
+    width: 100%; background: var(--black); border: 1px solid var(--border-bright);
+    color: var(--text); padding: 8px 12px; border-radius: 6px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.82rem; resize: none;
+    line-height: 1.5; transition: border-color 0.2s;
+  }
+  .role-feedback-wrap textarea:focus { outline: none; border-color: var(--green-bright); }
+  .role-feedback-wrap textarea::placeholder { color: var(--text-muted); }
+  .role-feedback-label {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px;
+    color: var(--text-muted); margin-bottom: 5px;
+  }
+
+  /* ─── LISC LEVELS ─── */
+  .lisc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 700px) { .lisc-grid { grid-template-columns: 1fr; } }
+
+  .lisc-panel {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+  .lisc-panel-header {
+    padding: 0.9rem 1.2rem; font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem; letter-spacing: 2px; display: flex; align-items: center; gap: 8px;
+  }
+  .lisc-panel-header.front { background: linear-gradient(135deg, #0d2235, #1a3a52); color: var(--l1-accent); }
+  .lisc-panel-header.behind { background: linear-gradient(135deg, #2e0a07, #4a1510); color: var(--l4-accent); }
+
+  .lisc-levels { padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
+
+  .level-row {
+    border-radius: 6px; border: 2px solid transparent;
+    cursor: pointer; transition: all 0.15s; overflow: hidden;
+  }
+  .level-row:hover { border-color: rgba(255,255,255,0.1); }
+  .level-row.selected { border-color: var(--green-bright) !important; }
+
+  .level-row-header {
+    padding: 0.6rem 0.9rem; display: flex; align-items: center; justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .level-row[data-band="1-2"] .level-row-header { background: var(--l1-bg); }
+  .level-row[data-band="3-4"] .level-row-header { background: var(--l2-bg); }
+  .level-row[data-band="5-6"] .level-row-header { background: var(--l3-bg); }
+  .level-row[data-band="7-8"] .level-row-header { background: var(--l4-bg); }
+
+  .level-badge {
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 500;
+    padding: 3px 8px; border-radius: 3px;
+  }
+  .level-row[data-band="1-2"] .level-badge { background: var(--l1); color: var(--l1-accent); }
+  .level-row[data-band="3-4"] .level-badge { background: var(--l2); color: var(--l2-accent); }
+  .level-row[data-band="5-6"] .level-badge { background: var(--l3); color: var(--l3-accent); }
+  .level-row[data-band="7-8"] .level-badge { background: var(--l4); color: var(--l4-accent); }
+
+  .level-label { font-size: 0.8rem; font-weight: 600; color: var(--text); flex: 1; }
+  .level-check { font-size: 1.1rem; opacity: 0.2; }
+  .level-row.selected .level-check { opacity: 1; }
+
+  .level-criteria { padding: 0 0.9rem 0.7rem; display: none; }
+  .level-row.selected .level-criteria { display: block; }
+  .level-criteria ul { list-style: none; padding: 0; margin-top: 0.4rem; }
+  .level-criteria li {
+    font-size: 0.78rem; color: var(--text-dim); padding: 3px 0 3px 14px;
+    position: relative; line-height: 1.4;
+  }
+  .level-criteria li::before { content: '›'; position: absolute; left: 2px; color: var(--green-bright); }
+
+  /* ─── PROGRESS CHART ─── */
+  .chart-container {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;
+  }
+  .chart-title { font-size: 0.85rem; font-weight: 600; color: var(--text-dim); margin-bottom: 1.2rem; letter-spacing: 1px; text-transform: uppercase; }
+  canvas { width: 100% !important; }
+
+  /* ─── SAVE BUTTON ─── */
+  .save-row { display: flex; align-items: center; gap: 1rem; margin-top: 1.5rem; }
+  .btn-save {
+    background: var(--green); color: white; border: none;
+    padding: 12px 32px; border-radius: 6px; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; letter-spacing: 1px; transition: all 0.2s;
+  }
+  .btn-save:hover { background: var(--green-light); }
+  .save-msg { font-size: 0.85rem; color: var(--green-bright); opacity: 0; transition: opacity 0.3s; }
+  .save-msg.show { opacity: 1; }
+
+  /* ─── PROGRESS SUMMARY ─── */
+  .summary-strip {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0;
+  }
+  .summary-card {
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem 1.2rem;
+  }
+  .summary-card .sc-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 0.4rem; }
+  .summary-card .sc-val { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 1px; }
+  .sc-val.front { color: var(--l1-accent); }
+  .sc-val.behind { color: var(--l4-accent); }
+
+  /* ─── TEACHER VIEW ─── */
+  #teacher-view { display: none; }
+  .teacher-header {
+    background: linear-gradient(135deg, #0a1f0e, #0d2e14);
+    border: 1px solid var(--border-bright); border-radius: 12px;
+    padding: 1.5rem 2rem; margin-bottom: 2rem;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+  }
+  .teacher-header h2 { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 2px; color: var(--green-bright); }
+  .teacher-header p { font-size: 0.85rem; color: var(--text-dim); margin-top: 2px; }
+
+  .class-table-wrap { overflow-x: auto; }
+  table.class-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .class-table th {
+    background: var(--card2); border: 1px solid var(--border);
+    padding: 0.7rem 1rem; text-align: left; font-family: 'DM Mono', monospace;
+    font-size: 0.72rem; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase;
+  }
+  .class-table td {
+    border: 1px solid var(--border); padding: 0.7rem 1rem;
+    background: var(--card);
+  }
+  .class-table tr:hover td { background: var(--card2); }
+  .band-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 3px;
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 500;
+  }
+  .bp-1 { background: var(--l1); color: var(--l1-accent); }
+  .bp-2 { background: var(--l2); color: var(--l2-accent); }
+  .bp-3 { background: var(--l3); color: var(--l3-accent); }
+  .bp-4 { background: var(--l4); color: var(--l4-accent); }
+  .bp-none { background: var(--card2); color: var(--text-muted); }
+
+  .tools-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+  .btn-secondary {
+    background: var(--card); border: 1px solid var(--border-bright);
+    color: var(--text); padding: 8px 18px; border-radius: 5px; font-size: 0.85rem;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--green-bright); color: var(--green-bright); }
+
+  .student-import textarea {
+    width: 100%; background: var(--card); border: 1px solid var(--border-bright);
+    color: var(--text); padding: 12px; border-radius: 6px;
+    font-family: 'DM Mono', monospace; font-size: 0.8rem;
+    resize: vertical; min-height: 120px; margin-bottom: 0.75rem;
+  }
+  .student-import textarea:focus { outline: none; border-color: var(--green-bright); }
+  .import-note { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+
+  /* modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; backdrop-filter: blur(4px);
+  }
+  .modal-box {
+    background: var(--card); border: 1px solid var(--border-bright);
+    border-radius: 12px; padding: 2rem; max-width: 380px; width: 90%;
+  }
+  .modal-box h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 2px; margin-bottom: 1rem; color: var(--green-bright); }
+  .modal-box input {
+    width: 100%; background: var(--black); border: 1px solid var(--border-bright);
+    color: var(--text); padding: 10px 14px; border-radius: 5px;
+    font-family: 'DM Mono', monospace; font-size: 0.9rem; margin-bottom: 1rem;
+  }
+  .modal-box input:focus { outline: none; border-color: var(--green-bright); }
+  .modal-error { font-size: 0.8rem; color: var(--l4-accent); margin-bottom: 0.75rem; display: none; }
+  .modal-row { display: flex; gap: 0.75rem; }
+  .btn-cancel {
+    background: transparent; border: 1px solid var(--border-bright);
+    color: var(--text-dim); padding: 10px 20px; border-radius: 5px;
+    cursor: pointer; font-size: 0.85rem; transition: all 0.2s;
+  }
+  .btn-cancel:hover { border-color: var(--text-dim); }
+
+  .class-chart-wrap {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin-bottom: 2rem;
+  }
+
+  /* ─── HIDDEN ─── */
+  .hidden { display: none !important; }
+
+  /* ─── TABS ─── */
+  .tabs { display: flex; gap: 0; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 10px 24px; font-size: 0.85rem; font-weight: 600;
+    letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+    border-bottom: 2px solid transparent; color: var(--text-muted);
+    transition: all 0.2s; font-family: 'DM Mono', monospace;
+  }
+  .tab.active { color: var(--green-bright); border-bottom-color: var(--green-bright); }
+  .tab:hover { color: var(--text); }
+
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    📺 GTV <span>GESS // BROADCAST JOURNALISM</span>
+  </div>
+  <div class="topbar-right">
+    <button class="teacher-btn" onclick="openTeacherModal()">⚙ TEACHER</button>
+  </div>
+</div>
+
+<!-- TEACHER PASSWORD MODAL -->
+<div class="modal-overlay hidden" id="teacher-modal">
+  <div class="modal-box">
+    <h3>Teacher Access</h3>
+    <input type="password" id="teacher-pwd" placeholder="Enter password..." onkeydown="if(event.key==='Enter')checkTeacherPwd()">
+    <div class="modal-error" id="pwd-error">Incorrect password. Try again.</div>
+    <div class="modal-row">
+      <button class="btn-primary" onclick="checkTeacherPwd()">Enter</button>
+      <button class="btn-cancel" onclick="closeTeacherModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+
+  <!-- ── LANDING ── -->
+  <div id="landing">
+    <div class="landing-title">YOUR<br><em>GTV</em><br>DASHBOARD</div>
+    <div class="landing-sub">GERMAN EUROPEAN SCHOOL SINGAPORE · GRADE 8</div>
+    <div class="select-wrapper">
+      <select id="student-select" onchange="document.getElementById('enter-btn').disabled = !this.value">
+        <option value="">— Select your name —</option>
+      </select>
+    </div>
+    <br>
+    <button class="btn-primary" id="enter-btn" disabled onclick="enterDashboard()">ENTER MY DASHBOARD →</button>
+  </div>
+
+  <!-- ── STUDENT DASHBOARD ── -->
+  <div id="student-view">
+    <div class="dash-header">
+      <div>
+        <h2>HEY, <em id="student-name-display">—</em></h2>
+        <div style="font-size:0.85rem;color:var(--text-dim);margin-top:4px;">Track your progress, update your level, log your role.</div>
+      </div>
+      <div style="display:flex;gap:0.75rem;align-items:center;">
+        <span class="week-badge" id="current-week-badge">WEEK —</span>
+        <button class="back-btn" onclick="goBack()">← Back</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-strip">
+      <div class="summary-card">
+        <div class="sc-label">🎤 Front of Camera Level</div>
+        <div class="sc-val front" id="summary-front">—</div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-label">🎬 Behind Camera Level</div>
+        <div class="sc-val behind" id="summary-behind">—</div>
+      </div>
+    </div>
+
+    <!-- Role Reflection This Week -->
+    <div class="section-label">THIS WEEK — MY ROLES &amp; REFLECTION</div>
+    <p class="role-section-intro">Tick every role you have done so far. Rate yourself and add a quick note on how it went.</p>
+    <div class="role-list" id="role-list"></div>
+
+    <!-- LISC -->
+    <div class="section-label">SELF-ASSESSMENT — WHERE AM I?</div>
+    <div class="lisc-grid">
+      <!-- FRONT -->
+      <div class="lisc-panel">
+        <div class="lisc-panel-header front">🎤 IN FRONT OF THE CAMERA</div>
+        <div class="lisc-levels" id="levels-front"></div>
+      </div>
+      <!-- BEHIND -->
+      <div class="lisc-panel">
+        <div class="lisc-panel-header behind">🎬 BEHIND THE CAMERA</div>
+        <div class="lisc-levels" id="levels-behind"></div>
+      </div>
+    </div>
+
+    <!-- Progress Chart -->
+    <div class="section-label">MY PROGRESS OVER TIME</div>
+    <div class="chart-container">
+      <div class="chart-title">LISC Level History</div>
+      <canvas id="progress-chart" height="200"></canvas>
+    </div>
+
+    <div class="save-row">
+      <button class="btn-save" onclick="saveStudentData()">💾 SAVE MY PROGRESS</button>
+      <span class="save-msg" id="save-msg">Saved ✓</span>
+    </div>
+  </div>
+
+  <!-- ── TEACHER VIEW ── -->
+  <div id="teacher-view">
+    <div class="teacher-header">
+      <div>
+        <h2>⚙ TEACHER DASHBOARD</h2>
+        <p>GTV Progress Overview · German European School Singapore</p>
+      </div>
+      <button class="back-btn" onclick="exitTeacher()">← Exit Teacher View</button>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('tab-overview')">Class Overview</div>
+      <div class="tab" onclick="switchTab('tab-chart')">Charts</div>
+      <div class="tab" onclick="switchTab('tab-manage')">Manage Students</div>
+    </div>
+
+    <!-- Overview Tab -->
+    <div class="tab-pane active" id="tab-overview">
+      <div class="tools-row">
+        <button class="btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn-secondary" onclick="renderTeacherView()">↻ Refresh</button>
+      </div>
+      <div class="class-table-wrap">
+        <table class="class-table" id="class-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Current Week</th>
+              <th>🎤 Front Level</th>
+              <th>🎬 Behind Level</th>
+              <th>Latest Role</th>
+              <th>Weeks Logged</th>
+            </tr>
+          </thead>
+          <tbody id="class-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Charts Tab -->
+    <div class="tab-pane" id="tab-chart">
+      <div class="class-chart-wrap">
+        <div class="chart-title" style="margin-bottom:1rem;">CLASS AVERAGE LEVEL — FRONT vs BEHIND CAMERA</div>
+        <canvas id="class-chart" height="260"></canvas>
+      </div>
+    </div>
+
+    <!-- Manage Students Tab -->
+    <div class="tab-pane" id="tab-manage">
+      <div class="student-import">
+        <p style="font-size:0.9rem;color:var(--text);margin-bottom:0.75rem;font-weight:600;">Update Student List</p>
+        <p class="import-note">Paste one student name per line. Existing student data will be preserved. Students removed from this list will no longer appear in the dropdown but their data is kept.</p>
+        <textarea id="student-list-input" placeholder="Emma Schmidt&#10;Luca Müller&#10;Sofia Chen&#10;..."></textarea>
+        <div style="display:flex;gap:1rem;align-items:center;">
+          <button class="btn-primary" onclick="importStudents()">Update Student List</button>
+          <span id="import-msg" style="font-size:0.85rem;color:var(--green-bright);opacity:0;transition:opacity 0.3s;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════
+
+const ROLES = [
+  { id: 'anchor',    icon: '🎙', name: 'Anchor',     side: 'In Front' },
+  { id: 'reporter',  icon: '🎤', name: 'Reporter',   side: 'In Front' },
+  { id: 'camera',    icon: '📷', name: 'Camera Op',  side: 'Behind' },
+  { id: 'director',  icon: '🎬', name: 'Director',   side: 'Behind' },
+  { id: 'editor',    icon: '✂️',  name: 'Editor',     side: 'Behind' },
+  { id: 'producer',  icon: '📋', name: 'Producer',   side: 'Behind' },
+  { id: 'graphics',  icon: '🖥', name: 'Graphics',   side: 'Behind' },
+  { id: 'sound',     icon: '🎧', name: 'Sound',      side: 'Behind' },
+];
+
+const LEVELS = [
+  {
+    band: '1-2', label: 'Surface — Acquiring', hattie: 'BAND 1–2',
+    front: {
+      li: 'I am learning to understand the basic elements of on-camera communication.',
+      sc: ['I can identify anchor, reporter, and presenter roles.',
+           'I can read a pre-written script aloud clearly.',
+           'I can stand still on camera and look at the lens.',
+           'I can use a basic broadcast greeting and sign-off.']
+    },
+    behind: {
+      li: 'I am learning to identify the parts of a news production and tools used.',
+      sc: ['I can name the key roles in a production team.',
+           'I can hold a camera steadily and record a basic shot.',
+           'I can import footage into WeVideo and identify the timeline.',
+           'I can identify what makes a story newsworthy.']
+    }
+  },
+  {
+    band: '3-4', label: 'Surface — Consolidating', hattie: 'BAND 3–4',
+    front: {
+      li: 'I am learning to write and deliver a structured broadcast script.',
+      sc: ['I can write a news script using the inverted pyramid structure.',
+           'I can deliver a script with appropriate pace and projection.',
+           'I can conduct a basic interview using prepared questions.',
+           'I can use vocabulary appropriate for broadcast journalism.']
+    },
+    behind: {
+      li: 'I am learning to film and edit footage to create a coherent news segment.',
+      sc: ['I can use a range of shot types (wide, medium, close-up) purposefully.',
+           'I can trim, arrange, and sequence clips in WeVideo to tell a story.',
+           'I can add lower thirds, text overlays, and basic transitions.',
+           'I can organise a segment with a clear beginning, middle, and end.']
+    }
+  },
+  {
+    band: '5-6', label: 'Deep Learning', hattie: 'BAND 5–6',
+    front: {
+      li: 'I am learning to analyse how my language and delivery choices shape audience impact.',
+      sc: ['I can adapt my delivery style to match different story types.',
+           'I can conduct an interview that draws out meaningful soundbites.',
+           'I can analyse the effect of my word choices on my audience.',
+           'I can reflect on and refine my on-camera performance using feedback.']
+    },
+    behind: {
+      li: 'I am learning to make deliberate technical choices that enhance broadcast quality.',
+      sc: ['I can select and sequence B-roll to reinforce the story\'s narrative.',
+           'I can balance audio levels and integrate music purposefully.',
+           'I can evaluate story structure and justify my editorial decisions.',
+           'I can refine a segment through multiple drafts based on feedback.']
+    }
+  },
+  {
+    band: '7-8', label: 'Transfer', hattie: 'BAND 7–8',
+    front: {
+      li: 'I am learning to independently craft broadcast content that demonstrates insight and originality.',
+      sc: ['I can independently plan, script, and present a Special Report.',
+           'I can make nuanced stylistic choices that create a professional voice.',
+           'I can analyse how my choices influence audience perception and shape narratives.',
+           'I can transfer my communication skills to new broadcast contexts with confidence.']
+    },
+    behind: {
+      li: 'I am learning to synthesise all production skills to direct, film, and edit a polished broadcast.',
+      sc: ['I can independently plan a production from shot list to final edit.',
+           'I can make sophisticated editorial decisions that serve the story\'s purpose.',
+           'I can critically evaluate a broadcast against journalistic standards.',
+           'I can transfer production skills across different types of broadcast content.']
+    }
+  }
+];
+
+const BAND_COLORS = { '1-2': '#4aa3e0', '3-4': '#34c46e', '5-6': '#f0c419', '7-8': '#e85d4a' };
+const BAND_NUMS   = { '1-2': 1, '3-4': 2, '5-6': 3, '7-8': 4 };
+const BAND_LABELS = { '1-2': 'Band 1–2', '3-4': 'Band 3–4', '5-6': 'Band 5–6', '7-8': 'Band 7–8' };
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+
+let currentStudent = null;
+let roleReflections = {}; // { roleId: { rating: 'good'|'great'|'amazing', note: '' } }
+let selectedFront  = null;
+let selectedBehind = null;
+let progressChart  = null;
+let classChart     = null;
+
+// ═══════════════════════════════════════════════
+//  STORAGE HELPERS
+// ═══════════════════════════════════════════════
+
+function getStudents() {
+  return JSON.parse(localStorage.getItem('gtv_students') || '[]');
+}
+function setStudents(arr) {
+  localStorage.setItem('gtv_students', JSON.stringify(arr));
+}
+function getStudentData(name) {
+  const all = JSON.parse(localStorage.getItem('gtv_data') || '{}');
+  return all[name] || { weeks: [] };
+}
+function setStudentData(name, data) {
+  const all = JSON.parse(localStorage.getItem('gtv_data') || '{}');
+  all[name] = data;
+  localStorage.setItem('gtv_data', JSON.stringify(all));
+}
+function getAllData() {
+  return JSON.parse(localStorage.getItem('gtv_data') || '{}');
+}
+function currentWeekNum() {
+  // Week number since start of 2025 school year (Aug 4 2025)
+  const start = new Date('2025-08-04');
+  const now = new Date();
+  const diff = Math.floor((now - start) / (7 * 24 * 60 * 60 * 1000));
+  return Math.max(1, diff + 1);
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+
+const DEFAULT_STUDENTS = [
+  'Sofiia', 'Nuria', 'Lucas W', 'Lorèn', 'Charles',
+  'Mille', 'Farrah', 'Lucas M', 'Malika', 'Astrid',
+  'Izzie', 'Sebastian', 'Eddie'
+];
+
+function init() {
+  if (!localStorage.getItem('gtv_students')) {
+    setStudents(DEFAULT_STUDENTS);
+  }
+  populateDropdown();
+}
+
+function populateDropdown() {
+  const sel = document.getElementById('student-select');
+  const students = getStudents();
+  // Clear all but placeholder
+  while (sel.options.length > 1) sel.remove(1);
+  students.sort().forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    sel.appendChild(opt);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  LANDING → DASHBOARD
+// ═══════════════════════════════════════════════
+
+function enterDashboard() {
+  const name = document.getElementById('student-select').value;
+  if (!name) return;
+  currentStudent = name;
+  roleReflections = {};
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('student-view').style.display = 'block';
+  document.getElementById('student-name-display').textContent = name.split(' ')[0].toUpperCase();
+  document.getElementById('current-week-badge').textContent = `WEEK ${currentWeekNum()}`;
+  renderRoles();
+  renderLISCLevels();
+  loadStudentState();
+  renderProgressChart();
+}
+
+function goBack() {
+  document.getElementById('student-view').style.display = 'none';
+  document.getElementById('landing').style.display = 'block';
+  currentStudent = null; roleReflections = {}; selectedFront = null; selectedBehind = null;
+}
+
+// ═══════════════════════════════════════════════
+//  ROLES — MULTI-SELECT WITH TRAFFIC LIGHT
+// ═══════════════════════════════════════════════
+
+function renderRoles() {
+  const list = document.getElementById('role-list');
+  list.innerHTML = ROLES.map(r => `
+    <div class="role-row" id="role-row-${r.id}">
+      <div class="role-row-top" onclick="toggleRole('${r.id}')">
+        <div class="role-checkbox" id="role-cb-${r.id}"></div>
+        <span class="role-row-icon">${r.icon}</span>
+        <div class="role-row-info">
+          <div class="role-row-name">${r.name}</div>
+          <div class="role-row-side">${r.side} the Camera</div>
+        </div>
+        <div class="tl-group" onclick="event.stopPropagation()">
+          <button class="tl-btn good"    id="tl-${r.id}-good"    onclick="setRating('${r.id}','good')">🔴 Good</button>
+          <button class="tl-btn great"   id="tl-${r.id}-great"   onclick="setRating('${r.id}','great')">🟡 Great</button>
+          <button class="tl-btn amazing" id="tl-${r.id}-amazing" onclick="setRating('${r.id}','amazing')">🟢 Amazing!</button>
+        </div>
+      </div>
+      <div class="role-feedback-wrap">
+        <div class="role-feedback-label">My reflection on this role</div>
+        <textarea id="note-${r.id}" rows="2" placeholder="What went well? What would you do differently next time?" oninput="setNote('${r.id}', this.value)"></textarea>
+      </div>
+    </div>`).join('');
+}
+
+function toggleRole(id) {
+  if (roleReflections[id]) {
+    delete roleReflections[id];
+    document.getElementById('role-row-' + id).classList.remove('active');
+    document.getElementById('role-cb-' + id).textContent = '';
+  } else {
+    roleReflections[id] = { rating: null, note: '' };
+    document.getElementById('role-row-' + id).classList.add('active');
+    document.getElementById('role-cb-' + id).textContent = '✓';
+  }
+}
+
+function setRating(roleId, rating) {
+  // Auto-activate the role if not already ticked
+  if (!roleReflections[roleId]) {
+    roleReflections[roleId] = { rating: null, note: '' };
+    document.getElementById('role-row-' + roleId).classList.add('active');
+    document.getElementById('role-cb-' + roleId).textContent = '✓';
+  }
+  roleReflections[roleId].rating = rating;
+  ['good','great','amazing'].forEach(r => {
+    const btn = document.getElementById(`tl-${roleId}-${r}`);
+    if (btn) btn.classList.toggle('selected', r === rating);
+  });
+}
+
+function setNote(roleId, val) {
+  if (!roleReflections[roleId]) roleReflections[roleId] = { rating: null, note: '' };
+  roleReflections[roleId].note = val;
+}
+
+function loadRoleState(saved) {
+  // saved is an object { roleId: { rating, note } }
+  if (!saved) return;
+  Object.entries(saved).forEach(([id, ref]) => {
+    roleReflections[id] = ref;
+    const row = document.getElementById('role-row-' + id);
+    const cb  = document.getElementById('role-cb-' + id);
+    if (row) row.classList.add('active');
+    if (cb)  cb.textContent = '✓';
+    if (ref.rating) setRating(id, ref.rating);
+    const ta = document.getElementById('note-' + id);
+    if (ta && ref.note) ta.value = ref.note;
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  LISC LEVELS
+// ═══════════════════════════════════════════════
+
+function renderLISCLevels() {
+  ['front', 'behind'].forEach(side => {
+    const container = document.getElementById('levels-' + side);
+    container.innerHTML = LEVELS.map(lv => {
+      const d = lv[side];
+      return `
+      <div class="level-row" data-band="${lv.band}" data-side="${side}" id="level-${side}-${lv.band}" onclick="selectLevel('${side}','${lv.band}')">
+        <div class="level-row-header">
+          <span class="level-badge">${lv.hattie}</span>
+          <span class="level-label">${lv.label}</span>
+          <span class="level-check">✓</span>
+        </div>
+        <div class="level-criteria">
+          <div style="font-size:0.75rem;color:var(--text-dim);font-style:italic;margin-bottom:6px;">${d.li}</div>
+          <ul>${d.sc.map(s => `<li>${s}</li>`).join('')}</ul>
+        </div>
+      </div>`;
+    }).join('');
+  });
+}
+
+function selectLevel(side, band) {
+  if (side === 'front') {
+    selectedFront = band;
+    document.getElementById('summary-front').textContent = BAND_LABELS[band] || '—';
+  } else {
+    selectedBehind = band;
+    document.getElementById('summary-behind').textContent = BAND_LABELS[band] || '—';
+  }
+  document.querySelectorAll(`.level-row[data-side="${side}"]`).forEach(el => el.classList.remove('selected'));
+  document.getElementById(`level-${side}-${band}`)?.classList.add('selected');
+}
+
+// ═══════════════════════════════════════════════
+//  LOAD / SAVE
+// ═══════════════════════════════════════════════
+
+function loadStudentState() {
+  const data = getStudentData(currentStudent);
+  const week = currentWeekNum();
+  const entry = data.weeks.find(w => w.week === week);
+  if (entry) {
+    if (entry.roles) loadRoleState(entry.roles);
+    if (entry.front)  selectLevel('front',  entry.front);
+    if (entry.behind) selectLevel('behind', entry.behind);
+  } else {
+    // Load latest previous LISC levels for context
+    if (data.weeks.length > 0) {
+      const latest = data.weeks[data.weeks.length - 1];
+      if (latest.front)  { selectedFront  = latest.front;  document.getElementById('summary-front').textContent  = BAND_LABELS[latest.front];  document.getElementById(`level-front-${latest.front}`)?.classList.add('selected'); }
+      if (latest.behind) { selectedBehind = latest.behind; document.getElementById('summary-behind').textContent = BAND_LABELS[latest.behind]; document.getElementById(`level-behind-${latest.behind}`)?.classList.add('selected'); }
+    }
+  }
+}
+
+function saveStudentData() {
+  const data = getStudentData(currentStudent);
+  const week = currentWeekNum();
+  const existingIdx = data.weeks.findIndex(w => w.week === week);
+  const entry = { week, roles: { ...roleReflections }, front: selectedFront, behind: selectedBehind, saved: new Date().toISOString() };
+  if (existingIdx >= 0) data.weeks[existingIdx] = entry;
+  else data.weeks.push(entry);
+  data.weeks.sort((a, b) => a.week - b.week);
+  setStudentData(currentStudent, data);
+  const msg = document.getElementById('save-msg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 2500);
+  renderProgressChart();
+}
+
+// ═══════════════════════════════════════════════
+//  PROGRESS CHART (Student)
+// ═══════════════════════════════════════════════
+
+function renderProgressChart() {
+  const data = getStudentData(currentStudent);
+  const weeks = data.weeks.filter(w => w.front || w.behind);
+  if (progressChart) { progressChart.destroy(); progressChart = null; }
+  const ctx = document.getElementById('progress-chart').getContext('2d');
+  const labels = weeks.map(w => `Wk ${w.week}`);
+  const frontVals = weeks.map(w => BAND_NUMS[w.front] || null);
+  const behindVals = weeks.map(w => BAND_NUMS[w.behind] || null);
+
+  if (weeks.length === 0) {
+    // Draw placeholder
+    ctx.fillStyle = '#1a2e1f';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillStyle = '#3d5c44';
+    ctx.font = '14px DM Sans';
+    ctx.textAlign = 'center';
+    ctx.fillText('Save your first entry to see your progress chart', ctx.canvas.width/2, ctx.canvas.height/2);
+    return;
+  }
+
+  progressChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: '🎤 Front of Camera', data: frontVals, borderColor: '#4aa3e0', backgroundColor: 'rgba(74,163,224,0.12)', tension: 0.3, pointRadius: 6, pointHoverRadius: 8, fill: true },
+        { label: '🎬 Behind Camera',   data: behindVals, borderColor: '#e85d4a', backgroundColor: 'rgba(232,93,74,0.12)',  tension: 0.3, pointRadius: 6, pointHoverRadius: 8, fill: true },
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { min: 0.5, max: 4.5, ticks: { stepSize: 1, callback: v => ['','1–2','3–4','5–6','7–8'][v] || '', color: '#7a9c82' }, grid: { color: '#1f3424' } },
+        x: { ticks: { color: '#7a9c82' }, grid: { color: '#1f3424' } }
+      },
+      plugins: { legend: { labels: { color: '#e8f0ea', font: { family: 'DM Sans' } } } }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  TEACHER VIEW
+// ═══════════════════════════════════════════════
+
+function openTeacherModal() {
+  document.getElementById('teacher-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('teacher-pwd').focus(), 100);
+}
+function closeTeacherModal() {
+  document.getElementById('teacher-modal').classList.add('hidden');
+  document.getElementById('teacher-pwd').value = '';
+  document.getElementById('pwd-error').style.display = 'none';
+}
+function checkTeacherPwd() {
+  if (document.getElementById('teacher-pwd').value === 'GTV2025') {
+    closeTeacherModal();
+    showTeacherView();
+  } else {
+    document.getElementById('pwd-error').style.display = 'block';
+  }
+}
+
+function showTeacherView() {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('student-view').style.display = 'none';
+  document.getElementById('teacher-view').style.display = 'block';
+  renderTeacherView();
+  // Populate manage tab
+  document.getElementById('student-list-input').value = getStudents().join('\n');
+}
+
+function exitTeacher() {
+  document.getElementById('teacher-view').style.display = 'none';
+  document.getElementById('landing').style.display = 'block';
+}
+
+function switchTab(id) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const idx = ['tab-overview','tab-chart','tab-manage'].indexOf(id);
+  document.querySelectorAll('.tab')[idx]?.classList.add('active');
+  if (id === 'tab-chart') renderClassChart();
+}
+
+function renderTeacherView() {
+  const students = getStudents().sort();
+  const allData = getAllData();
+  const tbody = document.getElementById('class-tbody');
+  tbody.innerHTML = '';
+  students.forEach(name => {
+    const d = allData[name] || { weeks: [] };
+    const weeks = d.weeks;
+    const latest = weeks.length ? weeks[weeks.length - 1] : null;
+    const frontBand  = latest?.front  || null;
+    const behindBand = latest?.behind || null;
+    const fp = frontBand  ? `bp-${BAND_NUMS[frontBand]}`  : 'bp-none';
+    const bp = behindBand ? `bp-${BAND_NUMS[behindBand]}` : 'bp-none';
+    // Build roles summary
+    let rolesHtml = '—';
+    if (latest?.roles && Object.keys(latest.roles).length) {
+      const ratingEmoji = { good: '🔴', great: '🟡', amazing: '🟢' };
+      rolesHtml = Object.entries(latest.roles).map(([id, ref]) => {
+        const role = ROLES.find(r => r.id === id);
+        const emoji = ref.rating ? ratingEmoji[ref.rating] : '⚪';
+        return `<span style="white-space:nowrap;">${emoji} ${role?.name || id}</span>`;
+      }).join(' &nbsp;');
+    }
+    tbody.innerHTML += `<tr>
+      <td style="font-weight:600;">${name}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:0.8rem;">${latest ? `Week ${latest.week}` : '—'}</td>
+      <td><span class="band-pill ${fp}">${frontBand ? BAND_LABELS[frontBand] : 'Not set'}</span></td>
+      <td><span class="band-pill ${bp}">${behindBand ? BAND_LABELS[behindBand] : 'Not set'}</span></td>
+      <td style="font-size:0.82rem;">${rolesHtml}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--text-dim);">${weeks.length}</td>
+    </tr>`;
+  });
+  if (!students.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">No students added yet. Go to Manage Students to add your class.</td></tr>';
+  }
+}
+
+function renderClassChart() {
+  const students = getStudents();
+  const allData = getAllData();
+  // Collect all week numbers present
+  const weekSet = new Set();
+  students.forEach(name => {
+    const d = allData[name] || { weeks: [] };
+    d.weeks.forEach(w => weekSet.add(w.week));
+  });
+  const weekNums = Array.from(weekSet).sort((a,b) => a - b);
+  if (!weekNums.length) return;
+
+  const frontAvgs = weekNums.map(wk => {
+    const vals = students.map(name => {
+      const d = allData[name] || { weeks: [] };
+      const entry = d.weeks.find(w => w.week === wk);
+      return entry?.front ? BAND_NUMS[entry.front] : null;
+    }).filter(v => v !== null);
+    return vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
+  });
+  const behindAvgs = weekNums.map(wk => {
+    const vals = students.map(name => {
+      const d = allData[name] || { weeks: [] };
+      const entry = d.weeks.find(w => w.week === wk);
+      return entry?.behind ? BAND_NUMS[entry.behind] : null;
+    }).filter(v => v !== null);
+    return vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
+  });
+
+  if (classChart) { classChart.destroy(); classChart = null; }
+  const ctx = document.getElementById('class-chart').getContext('2d');
+  classChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: weekNums.map(w => `Week ${w}`),
+      datasets: [
+        { label: '🎤 Avg Front Level', data: frontAvgs, backgroundColor: 'rgba(74,163,224,0.7)', borderColor: '#4aa3e0', borderWidth: 1 },
+        { label: '🎬 Avg Behind Level', data: behindAvgs, backgroundColor: 'rgba(232,93,74,0.7)', borderColor: '#e85d4a', borderWidth: 1 },
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { min: 0, max: 4, ticks: { stepSize: 1, callback: v => ['','1–2','3–4','5–6','7–8'][v] || '', color: '#7a9c82' }, grid: { color: '#1f3424' } },
+        x: { ticks: { color: '#7a9c82' }, grid: { color: '#1f3424' } }
+      },
+      plugins: { legend: { labels: { color: '#e8f0ea', font: { family: 'DM Sans' } } } }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  STUDENT IMPORT
+// ═══════════════════════════════════════════════
+
+function importStudents() {
+  const raw = document.getElementById('student-list-input').value;
+  const names = raw.split('\n').map(n => n.trim()).filter(Boolean);
+  setStudents(names);
+  populateDropdown();
+  const msg = document.getElementById('import-msg');
+  msg.textContent = `✓ ${names.length} students loaded`;
+  msg.style.opacity = 1;
+  setTimeout(() => { msg.style.opacity = 0; }, 2500);
+  renderTeacherView();
+}
+
+// ═══════════════════════════════════════════════
+//  CSV EXPORT
+// ═══════════════════════════════════════════════
+
+function exportCSV() {
+  const students = getStudents().sort();
+  const allData = getAllData();
+  const rows = [['Student', 'Week', 'Front Level', 'Behind Level', 'Roles & Ratings', 'Reflections', 'Saved']];
+  students.forEach(name => {
+    const d = allData[name] || { weeks: [] };
+    if (!d.weeks.length) {
+      rows.push([name, '—', '—', '—', '—', '—', '—']);
+    } else {
+      d.weeks.forEach(w => {
+        const rolesStr = w.roles
+          ? Object.entries(w.roles).map(([id, ref]) => `${ROLES.find(r=>r.id===id)?.name||id}: ${ref.rating||'—'}`).join(' | ')
+          : '—';
+        const notesStr = w.roles
+          ? Object.entries(w.roles).filter(([,ref]) => ref.note).map(([id, ref]) => `${ROLES.find(r=>r.id===id)?.name||id}: ${ref.note}`).join(' | ')
+          : '—';
+        rows.push([
+          name, w.week,
+          w.front  ? BAND_LABELS[w.front]  : '—',
+          w.behind ? BAND_LABELS[w.behind] : '—',
+          rolesStr, notesStr,
+          w.saved ? w.saved.substring(0,10) : '—'
+        ]);
+      });
+    }
+  });
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = `GTV_Progress_${new Date().toISOString().substring(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
