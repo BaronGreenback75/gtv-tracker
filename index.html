@@ -384,6 +384,23 @@
   /* ─── HIDDEN ─── */
   .hidden { display: none !important; }
 
+  /* ─── STUDENT PASSWORD MODAL ─── */
+  #student-pwd-modal .modal-box { max-width: 400px; }
+  #student-pwd-modal .modal-box h3 { font-size: 1.3rem; margin-bottom: 0.3rem; }
+  .pwd-modal-name { font-size: 1.5rem; font-family: 'Bebas Neue', sans-serif; color: var(--white); margin-bottom: 1rem; letter-spacing: 2px; }
+  .pwd-modal-hint { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1rem; }
+
+  /* ─── PASSWORD TABLE (Teacher) ─── */
+  .pwd-table-wrap { overflow-x: auto; margin-top: 1rem; }
+  table.pwd-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .pwd-table th { background: var(--card2); border: 1px solid var(--border); padding: 0.6rem 1rem; text-align: left; font-family: 'DM Mono', monospace; font-size: 0.72rem; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
+  .pwd-table td { border: 1px solid var(--border); padding: 0.6rem 1rem; background: var(--card); }
+  .pwd-table tr:hover td { background: var(--card2); }
+  .pwd-pill { font-family: 'DM Mono', monospace; font-size: 0.82rem; color: var(--green-bright); background: var(--green-dim); padding: 3px 10px; border-radius: 4px; letter-spacing: 0.5px; }
+  .pwd-copy-btn { background: transparent; border: 1px solid var(--border-bright); color: var(--text-dim); padding: 3px 10px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; transition: all 0.2s; font-family: 'DM Mono', monospace; }
+  .pwd-copy-btn:hover { border-color: var(--green-bright); color: var(--green-bright); }
+  .pwd-regen-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.5rem; }
+
   /* ─── TABS ─── */
   .tabs { display: flex; gap: 0; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
   .tab {
@@ -420,6 +437,21 @@
     <div class="modal-row">
       <button class="btn-primary" onclick="checkTeacherPwd()">Enter</button>
       <button class="btn-cancel" onclick="closeTeacherModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT PASSWORD MODAL -->
+<div class="modal-overlay hidden" id="student-pwd-modal">
+  <div class="modal-box">
+    <h3>🔐 Enter Your Password</h3>
+    <div class="pwd-modal-name" id="pwd-modal-name">—</div>
+    <div class="pwd-modal-hint">Your teacher gave you a password. Type it below to enter your dashboard.</div>
+    <input type="password" id="student-pwd-input" placeholder="Your password..." onkeydown="if(event.key==='Enter')checkStudentPwd()">
+    <div class="modal-error" id="student-pwd-error">Wrong password — check with your teacher!</div>
+    <div class="modal-row">
+      <button class="btn-primary" onclick="checkStudentPwd()">Let me in →</button>
+      <button class="btn-cancel" onclick="closeStudentPwdModal()">Cancel</button>
     </div>
   </div>
 </div>
@@ -511,6 +543,7 @@
     <div class="tabs">
       <div class="tab active" onclick="switchTab('tab-overview')">Class Overview</div>
       <div class="tab" onclick="switchTab('tab-chart')">Charts</div>
+      <div class="tab" onclick="switchTab('tab-passwords')">🔑 Passwords</div>
       <div class="tab" onclick="switchTab('tab-manage')">Manage Students</div>
     </div>
 
@@ -542,6 +575,21 @@
       <div class="class-chart-wrap">
         <div class="chart-title" style="margin-bottom:1rem;">CLASS AVERAGE LEVEL — FRONT vs BEHIND CAMERA</div>
         <canvas id="class-chart" height="260"></canvas>
+      </div>
+    </div>
+
+    <!-- Passwords Tab -->
+    <div class="tab-pane" id="tab-passwords">
+      <div class="tools-row">
+        <button class="btn-secondary" onclick="copyAllPasswords()">📋 Copy All Passwords</button>
+        <button class="btn-secondary" onclick="regenAllPasswords()">🎲 Regenerate All Passwords</button>
+      </div>
+      <p class="pwd-regen-note">Passwords are auto-generated per student. Use "Regenerate" only if you want to issue new passwords to the whole class (students will need to be told their new password).</p>
+      <div class="pwd-table-wrap">
+        <table class="pwd-table">
+          <thead><tr><th>Student</th><th>Password</th><th>Copy</th></tr></thead>
+          <tbody id="pwd-tbody"></tbody>
+        </table>
       </div>
     </div>
 
@@ -686,6 +734,43 @@ function setStudentData(name, data) {
 function getAllData() {
   return JSON.parse(localStorage.getItem('gtv_data') || '{}');
 }
+
+// ─── PASSWORD HELPERS ───
+function getPasswords() {
+  return JSON.parse(localStorage.getItem('gtv_passwords') || '{}');
+}
+function setPasswords(obj) {
+  localStorage.setItem('gtv_passwords', JSON.stringify(obj));
+}
+
+const PWD_ADJECTIVES = [
+  'Cosmic','Sneaky','Turbo','Mighty','Spicy','Fluffy','Neon','Pixel',
+  'Blazing','Cheeky','Funky','Zesty','Stealthy','Hyper','Wacky','Crispy',
+  'Frosty','Mega','Witty','Jolly','Speedy','Chunky','Dapper','Snarky'
+];
+const PWD_NOUNS = [
+  'Panda','Mango','Falcon','Gecko','Waffle','Narwhal','Cactus','Llama',
+  'Nugget','Koala','Blobfish','Penguin','Pickle','Taco','Dragon','Otter',
+  'Bagel','Sloth','Muffin','Parrot','Donut','Cobra','Viking','Noodle'
+];
+
+function generatePassword() {
+  const adj  = PWD_ADJECTIVES[Math.floor(Math.random() * PWD_ADJECTIVES.length)];
+  const noun = PWD_NOUNS[Math.floor(Math.random() * PWD_NOUNS.length)];
+  const num  = Math.floor(Math.random() * 90) + 10; // 10–99
+  return `${adj}${noun}${num}`;
+}
+
+function ensurePasswords(students) {
+  // Generates passwords for any student who doesn't have one yet
+  const pwds = getPasswords();
+  let changed = false;
+  students.forEach(name => {
+    if (!pwds[name]) { pwds[name] = generatePassword(); changed = true; }
+  });
+  if (changed) setPasswords(pwds);
+  return getPasswords();
+}
 function currentWeekNum() {
   // Week number since start of 2025 school year (Aug 4 2025)
   const start = new Date('2025-08-04');
@@ -708,6 +793,7 @@ function init() {
   if (!localStorage.getItem('gtv_students')) {
     setStudents(DEFAULT_STUDENTS);
   }
+  ensurePasswords(getStudents());
   populateDropdown();
 }
 
@@ -730,6 +816,34 @@ function populateDropdown() {
 function enterDashboard() {
   const name = document.getElementById('student-select').value;
   if (!name) return;
+  // Show password modal
+  document.getElementById('pwd-modal-name').textContent = name.toUpperCase();
+  document.getElementById('student-pwd-input').value = '';
+  document.getElementById('student-pwd-error').style.display = 'none';
+  document.getElementById('student-pwd-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('student-pwd-input').focus(), 100);
+}
+
+function closeStudentPwdModal() {
+  document.getElementById('student-pwd-modal').classList.add('hidden');
+  document.getElementById('student-select').value = '';
+  document.getElementById('enter-btn').disabled = true;
+}
+
+function checkStudentPwd() {
+  const name = document.getElementById('student-select').value;
+  const entered = document.getElementById('student-pwd-input').value.trim();
+  const pwds = getPasswords();
+  if (entered === pwds[name]) {
+    document.getElementById('student-pwd-modal').classList.add('hidden');
+    launchDashboard(name);
+  } else {
+    document.getElementById('student-pwd-error').style.display = 'block';
+    document.getElementById('student-pwd-input').select();
+  }
+}
+
+function launchDashboard(name) {
   currentStudent = name;
   roleReflections = {};
   document.getElementById('landing').style.display = 'none';
@@ -980,9 +1094,10 @@ function switchTab(id) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const idx = ['tab-overview','tab-chart','tab-manage'].indexOf(id);
+  const idx = ['tab-overview','tab-chart','tab-passwords','tab-manage'].indexOf(id);
   document.querySelectorAll('.tab')[idx]?.classList.add('active');
   if (id === 'tab-chart') renderClassChart();
+  if (id === 'tab-passwords') renderPasswordTable();
 }
 
 function renderTeacherView() {
@@ -1081,12 +1196,66 @@ function importStudents() {
   const raw = document.getElementById('student-list-input').value;
   const names = raw.split('\n').map(n => n.trim()).filter(Boolean);
   setStudents(names);
+  ensurePasswords(names); // generate passwords for any new names
   populateDropdown();
+  renderPasswordTable();
   const msg = document.getElementById('import-msg');
   msg.textContent = `✓ ${names.length} students loaded`;
   msg.style.opacity = 1;
   setTimeout(() => { msg.style.opacity = 0; }, 2500);
   renderTeacherView();
+}
+
+// ═══════════════════════════════════════════════
+//  PASSWORD TABLE (Teacher)
+// ═══════════════════════════════════════════════
+
+function renderPasswordTable() {
+  const students = getStudents().sort();
+  const pwds = ensurePasswords(students);
+  const tbody = document.getElementById('pwd-tbody');
+  tbody.innerHTML = '';
+  if (!students.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:2rem;">No students yet. Add them in Manage Students.</td></tr>';
+    return;
+  }
+  students.forEach(name => {
+    const pwd = pwds[name] || '—';
+    tbody.innerHTML += `<tr>
+      <td style="font-weight:600;">${name}</td>
+      <td><span class="pwd-pill">${pwd}</span></td>
+      <td><button class="pwd-copy-btn" onclick="copySingle('${name}','${pwd}',this)">Copy</button></td>
+    </tr>`;
+  });
+}
+
+function copySingle(name, pwd, btn) {
+  navigator.clipboard.writeText(`${name}: ${pwd}`).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
+}
+
+function copyAllPasswords() {
+  const students = getStudents().sort();
+  const pwds = getPasswords();
+  const text = students.map(n => `${n}: ${pwds[n] || '—'}`).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✓ All Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 1800);
+  });
+}
+
+function regenAllPasswords() {
+  if (!confirm('Regenerate ALL student passwords? Students will need to be told their new passwords.')) return;
+  const students = getStudents();
+  const newPwds = {};
+  students.forEach(name => { newPwds[name] = generatePassword(); });
+  setPasswords(newPwds);
+  renderPasswordTable();
 }
 
 // ═══════════════════════════════════════════════
